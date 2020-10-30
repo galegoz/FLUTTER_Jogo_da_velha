@@ -4,6 +4,9 @@
 import 'package:flutter/material.dart';
 import 'package:jogo_velha/constrollers/game_controller.dart';
 import 'package:jogo_velha/core/constants.dart';
+import 'package:jogo_velha/enums/player_type.dart';
+import 'package:jogo_velha/enums/winner_type.dart';
+import 'package:jogo_velha/widgets/custom_dialog.dart';
 
 class GamePage extends StatefulWidget{
   @override
@@ -41,7 +44,115 @@ class _GamePageState extends State<GamePage>{
     );
   }
 
+  _buildResetButton(){
+    return RaisedButton(
+      padding: const EdgeInsets.all(20),
+      child: Text(RESET_BUTTON_LABEL),
+      onPressed: _onResetGame(),
+    );
+  }
+
+  _buildBoard(){
+    return Expanded(
+      child: GridView.builder(
+        padding: const EdgeInsets.all(10),
+        itemCount: BOARD_SIZE,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3,
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+        ),
+          itemBuilder: _buildTile,
+      ),
+    );
+  }
+
+  Widget _buildTile(context, index){
+    return GestureDetector(
+      onTap: () => _onMartkTile(index),
+      child: Container(
+        color: _controller.tiles[index].color,
+        child: Center(
+          child: Text(
+            _controller.tiles[index].symbol,
+            style: TextStyle(
+              fontSize: 72.0,
+              color: Colors.white,
+            ),           
+          ),
+        ),
+      ),
+    );
+  }
 
 
+  _onResetGame(){
+    setState(() {
+      _controller.reset();
+    });
+  }
 
+  _onMartkTile(index){
+    if(!_controller.tiles[index].enable) return;
+    setState(() {
+      _controller.markBoardTileByIndex(index);
+    });
+    _checkWinner();
+  }
+
+  _checkWinner(){
+    var winner = _controller.checkWinner();
+    if(winner == WinnerType.none){
+      if(!_controller.hasMoves){
+        _showTiedDialog();
+      }else if(_controller.isSinglePlayer && _controller.currentPlayer == PlayerType.player2){
+        final index = _controller.movimentoAutomatico();
+        _onMartkTile(index);
+      }
+
+    }else{
+      String symbol = winner == WinnerType.player1 ? PLAYER1_SYMBOL : PLAYER2_SYMBOL;
+      _showWinnerDialog(symbol);
+    }
+  }
+
+  _showWinnerDialog(String symbol){
+    showDialog(context: context,
+    barrierDismissible: false, 
+    builder: (context){
+      return CustomDialog(
+        title: WIN_TITLE.replaceAll('[SYMBOL]', symbol),
+        message: DIALOG_MESSAGE, onPressed: _onResetGame(),
+        );
+      }
+    );
+  }
+
+  _showTiedDialog(){
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context){
+        return CustomDialog(
+          title: TIED_TITLE,
+          message: DIALOG_MESSAGE,
+          onPressed: _onResetGame,
+        );
+      },
+    );
+  }
+
+  _buildPlayerMode(){
+    return SwitchListTile(
+      title: Text(_controller.isSinglePlayer ? 'Single Player' : 'Two Players'),
+      secondary: Icon(_controller.isSinglePlayer ? Icons.person :
+      Icons.group),
+      value: _controller.isSinglePlayer,
+      onChanged: (value){
+        setState((){
+          _controller.isSinglePlayer = value;
+        });
+      },
+    ); 
+  }
 }
